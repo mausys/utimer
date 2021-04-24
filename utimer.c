@@ -9,7 +9,7 @@
 #define MAX_TIMERS UTIMER_MAX_TIMERS
 
 
-typedef struct utimer
+struct utimer
 {
   struct {
     utimer_t *next;
@@ -19,7 +19,7 @@ typedef struct utimer
   ticks_t interval;
   utimer_fn callback;
   void *ud;
-} utimer_t;
+};
 
 
 typedef struct {
