@@ -17,5 +17,5 @@ bool utimer_active(const utimer_t* timer);
 void utimer_start(utimer_t* timer, ticks_t countdown);
 void utimer_start_periodic(utimer_t* timer, ticks_t interval);
 void utimer_stop(utimer_t* timer);
-
+int utimer_oneshot(ticks_t countdown, utimer_fn callback, void *ud);
 

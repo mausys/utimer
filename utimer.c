@@ -1,51 +1,9 @@
+#include "utimer_private.h"
+
 #include <stddef.h>
-#include "utimer.h"
+#include <errno.h>
 
 
-#ifndef UTIMER_MAX_TIMERS
-#define UTIMER_MAX_TIMERS 16
-#endif
-
-#define MAX_TIMERS UTIMER_MAX_TIMERS
-
-
-struct utimer
-{
-  struct {
-    utimer_t *next;
-    utimer_t **prev;
-  } list;
-  ticks_t timeout;
-  ticks_t interval;
-  utimer_fn callback;
-  void *ud;
-};
-
-
-typedef struct {
-  utimer_t *active;
-  ticks_t now;
-  utimer_t timers[MAX_TIMERS];
-} utimer_scheduler_t;
-
-
-static utimer_scheduler_t m_scheduler;
-static ticks_t *m_ticks = &m_scheduler.now;
-
-
-static utimer_scheduler_t* utimer_scheduler_get(void)
-{
-  return &m_scheduler;
-}
-
-
-static void utimer_construct(utimer_t* timer, utimer_fn callback, void *ud)
-{
-  timer->list.prev = NULL;
-  timer->interval = 0;
-  timer->callback = callback;
-  timer->ud = ud;
-}
 
 
 static void deactivate(utimer_t* timer)
@@ -91,15 +49,10 @@ static void start(utimer_scheduler_t* scheduler, utimer_t* timer, ticks_t countd
 }
 
 
-ticks_t ticks_now(void)
-{
-  return *m_ticks;
-}
-
 
 ticks_t utimer_schedule(ticks_t now)
 {
-  utimer_scheduler_t *scheduler = utimer_scheduler_get();
+  utimer_scheduler_t *scheduler = utimer_scheduler_instance();
   scheduler->now = now;
 
   utimer_t *timer = scheduler->active;
@@ -112,12 +65,20 @@ ticks_t utimer_schedule(ticks_t now)
 
     ticks_t actual = timer->timeout;
 
+    utimer_fn callback = timer->callback;
+    void *ud = timer->ud;
+
     deactivate(timer);
 
-    timer->callback(timer->ud);
+    if (timer->oneshot) {
+      utimer_free(timer);
 
-    // check if callback function has already set new periodic timer
-    if ((timer->interval != 0) && (timer->list.prev == NULL)) {
+      callback(ud);
+    } else {
+      callback(ud);
+
+      if ((timer->interval != 0) && (timer->list.prev == NULL)) { // check if callback function has already set new periodic timer
+
       dticks_t adjust = actual + timer->interval - scheduler->now;
 
       // maybe we already missed an interval,
@@ -126,6 +87,7 @@ ticks_t utimer_schedule(ticks_t now)
         adjust = 1;
 
       start(scheduler, timer, adjust);
+      }
     }
 
     timer = scheduler->active;
@@ -139,23 +101,24 @@ utimer_t* utimer_new(utimer_fn callback, void *ud)
   if (callback == NULL)
     return NULL;
 
-  utimer_scheduler_t *scheduler =  utimer_scheduler_get();
+  utimer_t *timer = utimer_alloc();
 
-  for (int i = 0; i < MAX_TIMERS; i++) {
-    utimer_t *timer = &scheduler->timers[i];
-    if (timer->callback == NULL) {
-      utimer_construct(timer, callback, ud);
-      return timer;
-    }
-  }
-  return NULL;
+  if (timer == NULL)
+    return NULL;
+
+  *timer = (utimer_t) {
+    .callback = callback,
+    .ud = ud,
+  };
+
+  return timer;
 }
 
 
 void utimer_delete(utimer_t* timer)
 {
   utimer_stop(timer);
-  timer->callback = NULL;
+  utimer_free(timer);
 }
 
 
@@ -169,7 +132,7 @@ void utimer_start(utimer_t* timer, ticks_t countdown)
 {
   utimer_stop(timer);
 
-  utimer_scheduler_t *scheduler = utimer_scheduler_get();
+  utimer_scheduler_t *scheduler = utimer_scheduler_instance();
   start(scheduler, timer, countdown);
 
   timer->interval = 0;
@@ -180,7 +143,7 @@ void utimer_start_periodic(utimer_t* timer, ticks_t interval)
 {
   utimer_stop(timer);
 
-  utimer_scheduler_t *scheduler = utimer_scheduler_get();
+  utimer_scheduler_t *scheduler = utimer_scheduler_instance();
   start(scheduler, timer, interval);
 
   timer->interval = interval;
@@ -193,4 +156,17 @@ void utimer_stop(utimer_t* timer)
     return;
 
   deactivate(timer);
+}
+
+
+int utimer_oneshot(ticks_t countdown, utimer_fn callback, void *ud)
+{
+  utimer_t *timer = utimer_new(callback, ud);
+
+  if (timer == NULL)
+    return -ENOMEM;
+
+  timer->oneshot = true;
+  utimer_start(timer, countdown);
+  return 0;
 }

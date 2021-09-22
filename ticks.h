@@ -9,15 +9,19 @@
 #if TICKS_WIDTH == 64
   typedef uint64_t ticks_t;
   typedef int64_t dticks_t;
+  #define TICKS_MAX INT64_MAX
 #elif TICKS_WIDTH == 32
   typedef uint32_t ticks_t;
   typedef int32_t dticks_t;
+  #define TICKS_MAX INT32_MAX
 #elif TICKS_WIDTH == 16
   typedef uint16_t ticks_t;
   typedef int16_t dticks_t;
+  #define TICKS_MAX INT16_MAX
 #elif TICKS_WIDTH == 8
   typedef uint8_t ticks_t;
   typedef int8_t dticks_t;
+  #define TICKS_MAX INT8_MAX
 #else
   #error "unknown ticks width"
 #endif
