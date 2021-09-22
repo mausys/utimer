@@ -47,7 +47,7 @@
 
 ticks_t ticks_now(void);
 
-static inline ticks_t ticks_passed(ticks_t ts)
+static inline ticks_t ticks_elapsed(ticks_t ts)
 {
   return ticks_now() - ts;
 }
