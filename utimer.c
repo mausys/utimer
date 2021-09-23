@@ -79,14 +79,14 @@ ticks_t utimer_schedule(ticks_t now)
 
       if ((timer->interval != 0) && (timer->list.prev == NULL)) { // check if callback function has already set new periodic timer
 
-      dticks_t adjust = actual + timer->interval - scheduler->now;
+        dticks_t adjust = actual + timer->interval - scheduler->now;
 
-      // maybe we already missed an interval,
-      // so set countdown to next possible time
-      if (adjust <= 0)
-        adjust = 1;
+        // maybe we already missed an interval,
+        // so set countdown to next possible time
+        if (adjust <= 0)
+          adjust = 1;
 
-      start(scheduler, timer, adjust);
+        start(scheduler, timer, adjust);
       }
     }
 
