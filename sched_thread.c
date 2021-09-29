@@ -5,7 +5,7 @@
 #include <threads.h>
 
 
-thread_local utimer_scheduler_t *thread_scheduler = NULL;
+static thread_local utimer_scheduler_t *thread_scheduler = NULL;
 
 
 static void scheduler_destructor(void *ud)
